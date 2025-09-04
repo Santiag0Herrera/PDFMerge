@@ -266,15 +266,15 @@
           pages.forEach(p => outDoc.addPage(p));
         }
         const merged = await outDoc.save();
-        const base = (state.items[0]?.file?.name || 'documento').replace(/\.pdf$/i, '');
-        const outName = `${base}_combinado.pdf`;
+        const base = (state.items[0]?.file?.name || 'document').replace(/\.pdf$/i, '');
+        const outName = `${base}_combined.pdf`;
         const blob = new Blob([merged], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url; a.download = outName; document.body.appendChild(a); a.click(); a.remove();
         URL.revokeObjectURL(url);
       } catch (err) {
-        alert('Ocurrió un error al combinar: ' + (err && err.message ? err.message : err));
+        alert('An Error occured: ' + (err && err.message ? err.message : err));
       } finally {
         setBusy(false);
       }
