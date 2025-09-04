@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Combinar PDFs — Cliente (Vanilla JS)</title>
+  <style>
+    :root { --border:#e5e7eb; --muted:#6b7280; --bg:#fafafa; --ink:#111827; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+           margin: 0; color: var(--ink); background: #fff; }
+    .container { max-width: 860px; margin: 40px auto; padding: 16px; }
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    p.lead { color: var(--muted); margin: 0 0 20px; }
+
+    .zone { border: 2px dashed #d1d5db; border-radius: 16px; padding: 28px; text-align: center; background: var(--bg); }
+    .zone.dragover { background: #f3f4f6; border-color: #9ca3af; }
+
+    .btn { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+    .list { margin: 20px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .item { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); background: #f9fafb; border-radius: 999px; padding: 8px 12px; }
+    .name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .meta { color: var(--muted); }
+    .actions { margin-left: auto; display: inline-flex; gap: 6px; }
+
+    details { margin-top: 20px; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Combinar PDFs (cliente)</h1>
+    <p class="lead">Cargá varios archivos PDF, ordenalos y descargá un único PDF combinado. Todo se hace en tu navegador (no se suben archivos a ningún servidor).</p>
+
+    <input id="fileInput" type="file" accept="application/pdf,.pdf" multiple hidden />
+
+    <div id="dropZone" class="zone" tabindex="0">
+      <p>Arrastrá y soltá PDFs acá, o</p>
+      <button id="pickBtn" class="btn">Elegir archivos</button>
+    </div>
+
+    <ol id="queue" class="list" aria-live="polite"></ol>
+
+    <div style="display:flex; gap:12px; margin-top:16px;">
+      <button id="clearBtn" class="btn" disabled>Limpiar lista</button>
+      <button id="mergeBtn" class="btn primary" disabled>Combinar y descargar</button>
+    </div>
+
+    <details>
+      <summary>Notas</summary>
+      <ul>
+        <li><strong>Privado:</strong> el merge se hace 100% en el navegador con <code>pdf-lib</code>.</li>
+        <li>Archivos protegidos con contraseña no son soportados sin la clave.</li>
+        <li>El nombre resultante toma el del primer PDF y agrega <code>_combinado.pdf</code>.</li>
+      </ul>
+    </details>
+  </div>
+
+  <!-- pdf-lib CDN -->
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script>
+    // Estado simple en memoria
+    const state = { items: [], busy: false };
+
+    // Utilidades
+    const $ = (sel) => document.querySelector(sel);
+    const fileInput = $('#fileInput');
+    const dropZone = $('#dropZone');
+    const queueEl = $('#queue');
+    const pickBtn = $('#pickBtn');
+    const clearBtn = $('#clearBtn');
+    const mergeBtn = $('#mergeBtn');
+
+    function setBusy(v) {
+      state.busy = v;
+      [pickBtn, clearBtn, mergeBtn].forEach(btn => btn && (btn.disabled = v || (btn === mergeBtn && state.items.length === 0) || (btn === clearBtn && state.items.length === 0)));
+      mergeBtn.textContent = v ? 'Combinando…' : 'Combinar y descargar';
+    }
+
+    function fmtKB(bytes) { return Math.max(1, Math.round(bytes / 1024)) + ' KB'; }
+
+    function addFiles(fileList) {
+      const files = Array.from(fileList || [])
+        .filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))
+        .map(f => ({ id: crypto.randomUUID(), file: f }));
+      state.items.push(...files);
+      render();
+    }
+
+    function move(index, dir) {
+      const t = index + dir;
+      if (t < 0 || t >= state.items.length) return;
+      const a = state.items[index];
+      state.items[index] = state.items[t];
+      state.items[t] = a;
+      render();
+    }
+
+    function remove(id) {
+      state.items = state.items.filter(x => x.id !== id);
+      render();
+    }
+
+    function clearAll() { state.items = []; render(); }
+
+    function render() {
+      queueEl.innerHTML = '';
+      state.items.forEach((item, i) => {
+        const li = document.createElement('li');
+        li.className = 'item';
+        li.innerHTML = `
+          <span class="name">${i+1}. ${item.file.name}</span>
+          <span class="meta">(${fmtKB(item.file.size)})</span>
+          <div class="actions">
+            <button class="btn btn-up" ${i===0?'disabled':''}>↑</button>
+            <button class="btn btn-down" ${i===state.items.length-1?'disabled':''}>↓</button>
+            <button class="btn btn-remove">Quitar</button>
+          </div>`;
+        li.querySelector('.btn-up').onclick = () => move(i, -1);
+        li.querySelector('.btn-down').onclick = () => move(i, 1);
+        li.querySelector('.btn-remove').onclick = () => remove(item.id);
+        queueEl.appendChild(li);
+      });
+      mergeBtn.disabled = state.busy || state.items.length === 0;
+      clearBtn.disabled = state.busy || state.items.length === 0;
+    }
+
+    function readAsArrayBuffer(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function doMerge() {
+      if (!state.items.length || state.busy) return;
+      setBusy(true);
+      try {
+        const outDoc = await PDFLib.PDFDocument.create();
+        for (const { file } of state.items) {
+          const bytes = await readAsArrayBuffer(file);
+          const src = await PDFLib.PDFDocument.load(bytes, { ignoreEncryption: false });
+          const pages = await outDoc.copyPages(src, src.getPageIndices());
+          pages.forEach(p => outDoc.addPage(p));
+        }
+        const merged = await outDoc.save();
+        const base = (state.items[0]?.file?.name || 'documento').replace(/\.pdf$/i, '');
+        const outName = `${base}_combinado.pdf`;
+        const blob = new Blob([merged], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = outName; document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('Ocurrió un error al combinar: ' + (err && err.message ? err.message : err));
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    // Eventos
+    pickBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', e => addFiles(e.target.files));
+
+    ;['dragenter','dragover'].forEach(evt => dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.add('dragover'); }));
+    ;['dragleave','drop'].forEach(evt => dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.remove('dragover'); }));
+    dropZone.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+
+    clearBtn.addEventListener('click', clearAll);
+    mergeBtn.addEventListener('click', doMerge);
+
+    render();
+  </script>
+</body>
+</html>
