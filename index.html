@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Combinar PDFs — Cliente (Vanilla JS)</title>
+  <title>PDF Combine SH</title>
   <style>
-    :root { --border:#e5e7eb; --muted:#6b7280; --bg:#fafafa; --ink:#111827; }
+    :root { --border:#e5e7eb; --muted:#6b7280; --bg:#fafafa; --ink:#2e6ff9; }
     * { box-sizing: border-box; }
     body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
            margin: 0; color: var(--ink); background: #fff; }
     .container { max-width: 860px; margin: 40px auto; padding: 16px; }
-    h1 { font-size: 28px; margin: 0 0 8px; }
-    p.lead { color: var(--muted); margin: 0 0 20px; }
+    h1 { font-size: 28px; margin: 0 0 8px; color: var(--ink) }
+    p.lead { color: var(--muted);}
 
     .zone { border: 2px dashed #d1d5db; border-radius: 16px; padding: 28px; text-align: center; background: var(--bg); }
     .zone.dragover { background: #f3f4f6; border-color: #9ca3af; }
@@ -19,7 +19,6 @@
     .btn { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
     .btn:disabled { opacity: .6; cursor: not-allowed; }
     .btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
-
     .list { margin: 20px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
     .item { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); background: #f9fafb; border-radius: 999px; padding: 8px 12px; }
     .name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -32,29 +31,39 @@
 </head>
 <body>
   <div class="container">
-    <h1>Combinar PDFs (cliente)</h1>
-    <p class="lead">Cargá varios archivos PDF, ordenalos y descargá un único PDF combinado. Todo se hace en tu navegador (no se suben archivos a ningún servidor).</p>
+    <h1>🛟 Combine PDFs Safetly</h1>
+    <p class="lead">Upload every pdf you want to combine them in just one.</p>
+    <p class="lead">This is just an algorithm execution. No files are saved on any database.</p>
+    <p class="lead">That's why this is fast </p>
 
     <input id="fileInput" type="file" accept="application/pdf,.pdf" multiple hidden />
 
     <div id="dropZone" class="zone" tabindex="0">
-      <p>Arrastrá y soltá PDFs acá, o</p>
-      <button id="pickBtn" class="btn">Elegir archivos</button>
+      <p>Throw me any PDF, I can handle it! 🦾</p>
+      <button id="pickBtn" class="btn">
+        <i class="ph ph-upload-simple" style="font-size:1.2em;vertical-align:middle;"></i> Choose Files
+      </button>
     </div>
 
     <ol id="queue" class="list" aria-live="polite"></ol>
 
     <div style="display:flex; gap:12px; margin-top:16px;">
-      <button id="clearBtn" class="btn" disabled>Limpiar lista</button>
-      <button id="mergeBtn" class="btn primary" disabled>Combinar y descargar</button>
+      <button id="clearBtn" class="btn" disabled>
+        <i class="ph ph-trash" style="font-size:1.2em;vertical-align:middle;"></i> Clean List
+      </button>
+      <button id="mergeBtn" class="btn primary" disabled>
+        <i class="ph ph-files" style="font-size:1.2em;vertical-align:middle;"></i> Combine and Download
+      </button>
+      <!-- Phosphor Icons CDN -->
+      <script src="https://unpkg.com/@phosphor-icons/web"></script>
     </div>
 
     <details>
-      <summary>Notas</summary>
+      <summary>Details</summary>
       <ul>
-        <li><strong>Privado:</strong> el merge se hace 100% en el navegador con <code>pdf-lib</code>.</li>
-        <li>Archivos protegidos con contraseña no son soportados sin la clave.</li>
-        <li>El nombre resultante toma el del primer PDF y agrega <code>_combinado.pdf</code>.</li>
+      <li><strong>Private:</strong> merging is done 100% in your browser using <code>pdf-lib</code>.</li>
+      <li>Password-protected files are not supported without the password.</li>
+      <li>The resulting file name uses the first PDF's name and adds <code>_combined.pdf</code>.</li>
       </ul>
     </details>
   </div>
@@ -177,4 +186,8 @@
     render();
   </script>
 </body>
+<footer style="position:fixed; left:0; right:0; bottom:0; text-align:center; color:#6b7280; background:#fafafa; padding:12px 0; box-shadow:0 -1px 8px #e5e7eb33; font-size: small;">
+  Copyright © 2025 Santiago Herrera. All rights reserved. <br>
+  This website and its content, including but not limited to text, graphics, logos, and code, are the property of Santiago Herrera and are protected by international copyright laws. <br>Unauthorized use, reproduction, or distribution of any material from this site without prior written permission is strictly prohibited.
+</footer>
 </html>
