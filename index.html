@@ -3,8 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4c4.png">
   <title>PDF Combine SH</title>
   <style>
+    .item.animating {
+      position: absolute !important;
+      left: 0;
+      width: 100%;
+      z-index: 10;
+      pointer-events: none;
+      transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+    }
     :root { --border:#e5e7eb; --muted:#6b7280; --bg:#fafafa; --ink:#2e6ff9; }
     * { box-sizing: border-box; }
     body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
@@ -12,7 +21,44 @@
     .container { max-width: 860px; margin: 40px auto; padding: 16px; }
     h1 { font-size: 28px; margin: 0 0 8px; color: var(--ink) }
     p.lead { color: var(--muted);}
-
+    .item.move {
+      transition:
+        transform 0.5s cubic-bezier(0.4,0,0.2,1),
+        box-shadow 0.5s cubic-bezier(0.4,0,0.2,1),
+        opacity 0.5s cubic-bezier(0.4,0,0.2,1);
+      z-index: 3;
+      box-shadow: 0 4px 16px #2e6ff922;
+      opacity: 1;
+      scale: 1.0;
+    }
+    .item.move-up {
+      transform: translateY(-24px) scale(1.0);
+      opacity: 1;
+    }
+    .item.move-down {
+      transform: translateY(24px) scale(1.0);
+      opacity: 1;
+    }
+    .item.switch-up {
+      transition:
+        transform 0.5s cubic-bezier(0.4,0,0.2,1),
+        box-shadow 0.5s cubic-bezier(0.4,0,0.2,1),
+        opacity 0.5s cubic-bezier(0.4,0,0.2,1);
+      z-index: 2;
+      box-shadow: 0 1px 4px #2e6ff911;
+      opacity: 1;
+      transform: translateY(24px) scale(1.0);
+    }
+    .item.switch-down {
+      transition:
+        transform 0.5s cubic-bezier(0.4,0,0.2,1),
+        box-shadow 0.5s cubic-bezier(0.4,0,0.2,1),
+        opacity 0.5s cubic-bezier(0.4,0,0.2,1);
+      z-index: 2;
+      box-shadow: 0 1px 4px #2e6ff911;
+      opacity: 1;
+      transform: translateY(-24px) scale(1.0);
+    }
     .zone { border: 2px dashed #d1d5db; border-radius: 16px; padding: 28px; text-align: center; background: var(--bg); }
     .zone.dragover { background: #f3f4f6; border-color: #9ca3af; }
 
@@ -20,13 +66,30 @@
     .btn:disabled { opacity: .6; cursor: not-allowed; }
     .btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
     .list { margin: 20px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
-    .item { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); background: #f9fafb; border-radius: 999px; padding: 8px 12px; }
+    .item { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); background: #f9fafb; border-radius: 999px; padding: 8px 12px; flex-wrap: wrap; }
     .name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .meta { color: var(--muted); }
-    .actions { margin-left: auto; display: inline-flex; gap: 6px; }
+    .actions { margin-left: auto; display: inline-flex; gap: 6px; flex-wrap: wrap; }
 
     details { margin-top: 20px; }
     code { background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
+
+    /* Responsive styles */
+    @media (max-width: 600px) {
+      .container { max-width: 100%; margin: 12px auto; padding: 8px; }
+      h1 { font-size: 20px; }
+      .zone { padding: 16px; font-size: 1em; }
+      .list { gap: 4px; }
+      .item { flex-direction: column; align-items: flex-start; gap: 6px; padding: 8px; border-radius: 16px; }
+      .actions { margin-left: 0; width: 100%; justify-content: flex-start; }
+      .btn { padding: 8px 10px; font-size: 1em; }
+      footer { font-size: x-small; padding: 8px 0; }
+    }
+    @media (max-width: 400px) {
+      h1 { font-size: 16px; }
+      .zone { padding: 8px; }
+      .btn { padding: 6px 8px; font-size: .9em; }
+    }
   </style>
 </head>
 <body>
@@ -47,7 +110,7 @@
 
     <ol id="queue" class="list" aria-live="polite"></ol>
 
-    <div style="display:flex; gap:12px; margin-top:16px;">
+    <div style="display:flex; gap:12px; margin-top:16px; flex-wrap:wrap;">
       <button id="clearBtn" class="btn" disabled>
         <i class="ph ph-trash" style="font-size:1.2em;vertical-align:middle;"></i> Clean List
       </button>
@@ -102,10 +165,55 @@
     function move(index, dir) {
       const t = index + dir;
       if (t < 0 || t >= state.items.length) return;
-      const a = state.items[index];
-      state.items[index] = state.items[t];
-      state.items[t] = a;
-      render();
+      const items = queueEl.querySelectorAll('.item');
+      const liA = items[index];
+      const liB = items[t];
+      if (!liA || !liB) return;
+
+  // Get bounding rectangles and height
+  const heightA = liA.offsetHeight;
+
+  // Insert placeholder before the moving item
+  const placeholder = document.createElement('li');
+  placeholder.className = 'item';
+  placeholder.style.height = heightA + 'px';
+  placeholder.style.background = '#e5e7eb';
+  queueEl.insertBefore(placeholder, liA);
+
+  // Set container to relative for absolute animation
+  queueEl.style.position = 'relative';
+  liA.classList.add('animating');
+  liA.style.position = 'absolute';
+  liA.style.left = '0';
+  liA.style.width = '100%';
+  liA.style.zIndex = '10';
+  // Set top to current offsetTop
+  liA.style.top = placeholder.offsetTop + 'px';
+
+  // Calculate the target offset relative to parent
+  const targetOffset = liB.offsetTop - placeholder.offsetTop;
+  liA.style.transform = `translateY(${targetOffset}px)`;
+
+      function onTransitionEnd(e) {
+        if (e.propertyName !== 'transform') return;
+        liA.classList.remove('animating');
+        liA.style.transform = '';
+        liA.style.position = '';
+        liA.style.left = '';
+        liA.style.width = '';
+        liA.style.zIndex = '';
+        liA.style.top = '';
+        queueEl.style.position = '';
+        // Remove placeholder
+        if (placeholder.parentNode) placeholder.parentNode.removeChild(placeholder);
+        // Swap items in state
+        const a = state.items[index];
+        state.items[index] = state.items[t];
+        state.items[t] = a;
+        render();
+        liA.removeEventListener('transitionend', onTransitionEnd);
+      }
+      liA.addEventListener('transitionend', onTransitionEnd);
     }
 
     function remove(id) {
